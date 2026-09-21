@@ -3,7 +3,7 @@ name: Build APK
 on:
   workflow_dispatch:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
 
 jobs:
   build:
@@ -17,24 +17,25 @@ jobs:
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '17'
+          java-version: "17"
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
-          gradle-version: '8.9'
+          gradle-version: "8.9"
 
-      - name: Extract Android project
+      - name: Find Android project
         run: |
-          unzip -q ABIR_Gaming_Assistant_V3_CloudBuild.zip
-          chmod +x ABIR_Gaming_Assistant_V3_CloudBuild/gradlew
+          echo "Finding project..."
+          find . -maxdepth 3 -name settings.gradle.kts -o -name settings.gradle
 
-      - name: Build Debug APK
+      - name: Build APK
         run: |
-          gradle -p ABIR_Gaming_Assistant_V3_CloudBuild assembleDebug
+          chmod +x gradlew
+          ./gradlew assembleDebug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: ABIR-Gaming-Assistant-APK
-          path: ABIR_Gaming_Assistant_V3_CloudBuild/app/build/outputs/apk/debug/*.apk
+          path: app/build/outputs/apk/debug/*.apk
