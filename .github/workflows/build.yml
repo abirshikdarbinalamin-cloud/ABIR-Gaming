@@ -52,23 +52,33 @@ jobs:
           echo "Project root: $ROOT"
           echo "PROJECT_ROOT=$ROOT" >> "$GITHUB_ENV"
 
-      - name: Build APK
+      - name: Build Android Project
         shell: bash
         run: |
           cd "$PROJECT_ROOT"
 
+          echo "===== STARTING BUILD ====="
+
           set +e
-          gradle assembleDebug --stacktrace 2>&1 | tee build.log
-          STATUS=${PIPESTATUS[0]}
+          gradle assembleDebug --stacktrace > build.log 2>&1
+          STATUS=$?
 
           echo ""
-          echo "======================================"
-          echo "KOTLIN / BUILD ERROR SUMMARY"
-          echo "======================================"
+          echo "========================================"
+          echo "        ACTUAL BUILD ERROR"
+          echo "========================================"
 
-          grep -nE "e: |error: |ERROR|FAILURE:" build.log | tail -30 || true
+          grep -nE "e: |error: |ERROR|FAILURE:" build.log | tail -50 || true
 
-          echo "======================================"
+          echo ""
+          echo "========================================"
+          echo "        LAST BUILD LOG"
+          echo "========================================"
+
+          tail -80 build.log
+
+          echo ""
+          echo "========================================"
 
           exit $STATUS
 
@@ -78,4 +88,4 @@ jobs:
         with:
           name: ABIR-Gaming-Assistant-APK
           path: "${{ env.PROJECT_ROOT }}/app/build/outputs/apk/debug/*.apk"
-          if-no-files-found: error    
+          if-no-files-found: error
