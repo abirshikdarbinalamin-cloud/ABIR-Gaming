@@ -1,30 +1,71 @@
-- name: Build Android Project
+name: Build APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["main"]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.9"
+
+      - name: Extract Android project
         shell: bash
         run: |
+          set -e
+
+          ZIP="$(find . -maxdepth 1 -type f -iname '*.zip' -print -quit)"
+
+          if [ -z "$ZIP" ]; then
+            echo "No ZIP file found."
+            exit 1
+          fi
+
+          echo "Using ZIP: $ZIP"
+
+          rm -rf project
+          mkdir -p project
+
+          unzip -q "$ZIP" -d project
+
+          SETTINGS="$(find project -type f \( -name settings.gradle.kts -o -name settings.gradle \) -print -quit)"
+
+          if [ -z "$SETTINGS" ]; then
+            echo "Android project settings file not found."
+            exit 1
+          fi
+
+          ROOT="$(dirname "$SETTINGS")"
+
+          echo "Project root: $ROOT"
+          echo "PROJECT_ROOT=$ROOT" >> "$GITHUB_ENV"
+
+      - name: Build APK
+        shell: bash
+        run: |
+          set -e
           cd "$PROJECT_ROOT"
+          gradle assembleDebug --stacktrace
 
-          set +e
-          gradle assembleDebug --stacktrace > build.log 2>&1
-          STATUS=$?
-
-          echo ""
-          echo "========================================"
-          echo "        REAL BUILD ERROR"
-          echo "========================================"
-
-          echo ""
-          echo "---- WHAT WENT WRONG ----"
-          sed -n '/FAILURE:/,/BUILD FAILED/p' build.log | head -150
-
-          echo ""
-          echo "---- IMPORTANT ERRORS ----"
-          grep -nE "What went wrong|Could not|Caused by:|e: |error: |Exception:" build.log | tail -80 || true
-
-          echo ""
-          echo "---- END OF LOG ----"
-          tail -50 build.log
-
-          echo ""
-          echo "========================================"
-
-          exit $STATUS
+      - name: Upload APK
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ABIR-Gaming-Assistant-APK
+          path: "${{ env.PROJECT_ROOT }}/app/build/outputs/apk/debug/*.apk"
+          if-no-files-found: error
